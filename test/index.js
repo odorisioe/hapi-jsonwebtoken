@@ -162,6 +162,28 @@ describe('hapi-jsonwebtoken', () => {
     });
 
 
+    it('Encode, decode & verify (w/ promises) - invalid sign algorithm', async () => {
+
+        const config = Hoek.clone(internals.config[1]);
+        config.sign.promise = true;
+        config.sign.options.algorithm = 'RS256X';
+        config.decode.promise = true;
+
+        const user = internals.users[3];
+        const token = await HapiJWT.sign(user, config)
+            .then((result) => {
+
+                return result;
+            })
+            .catch((err) => {
+
+                return err;
+            });
+
+        expect(token.name).to.equal('Error');
+    });
+
+
     it('Encode, decode & verify (w/ promises) - expired token with config', async () => {
 
         const config = Hoek.clone(internals.config[1]);
@@ -354,6 +376,68 @@ describe('hapi-jsonwebtoken', () => {
     });
 
 
+    it('Auth plugin - bad implementation (no credentials object)', async () => {
+
+        const user = internals.users[3];
+        const config = Hoek.clone(internals.config[3]);
+        const token = await HapiJWT.sign(user, config);
+
+        const server = await internals.hapi({
+            debug: false
+        });
+        server.auth.strategy('jwt', 'hapi-jsonwebtoken', config);
+
+        server.route({
+            method: 'GET',
+            path: '/',
+            handler: function (request, h) {
+
+                return 'OK';
+            },
+            options: {
+                auth: 'jwt'
+            }
+        });
+
+        const request = { method: 'GET', url: '/', headers: { authorization: 'Bearer ' + token } };
+        const res = await server.inject(request);
+
+        expect(res.result).not.equal('OK');
+        expect(res.statusCode).to.equal(500);
+    });
+
+
+    it('Auth plugin - bad implementation (false value on credentials object)', async () => {
+
+        const user = internals.users[3];
+        const config = Hoek.clone(internals.config[4]);
+        const token = await HapiJWT.sign(user, config);
+
+        const server = await internals.hapi({
+            debug: false
+        });
+        server.auth.strategy('jwt', 'hapi-jsonwebtoken', config);
+
+        server.route({
+            method: 'GET',
+            path: '/',
+            handler: function (request, h) {
+
+                return 'OK';
+            },
+            options: {
+                auth: 'jwt'
+            }
+        });
+
+        const request = { method: 'GET', url: '/', headers: { authorization: 'Bearer ' + token } };
+        const res = await server.inject(request);
+
+        expect(res.result).not.equal('OK');
+        expect(res.statusCode).to.equal(500);
+    });
+
+
     it('Auth plugin - authorized', async () => {
 
         const user = internals.users[1];
@@ -535,12 +619,44 @@ internals.config = {
                 credentials: user
             };
         }
+    },
+    3: {
+        secretOrPrivateKey: '#Config03!',
+        validate: (request, payload, h) => {
+
+            const user = internals.users[payload.id];
+
+            if (!user) {
+                return { credentials: null, isValid: false };
+            }
+
+            return {
+                isValid: user.valid,
+                credentials: user.valid
+            };
+        }
+    },
+    4: {
+        secretOrPrivateKey: '#Config03!',
+        validate: (request, payload, h) => {
+
+            const user = internals.users[payload.id];
+
+            if (!user) {
+                return { credentials: null, isValid: false };
+            }
+
+            return {
+                isValid: user.valid,
+                credentials: false
+            };
+        }
     }
 };
 
-internals.hapi = async () => {
+internals.hapi = async (options) => {
 
-    const server = Hapi.server();
+    const server = Hapi.server(options);
     await server.register(require('../').plugin);
     return server;
 };

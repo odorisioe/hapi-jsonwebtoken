@@ -17,7 +17,7 @@
     "lib": "lib"
   },
   "scripts": {
-    "test": "lab --verbose -a code -t 10 -L",
+    "test": "lab --verbose -a code -t 95 -L",
     "test-cov-html": "lab -a code -r html -o coverage.html"
   },
   "keywords": [

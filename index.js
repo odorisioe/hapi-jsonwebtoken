@@ -1,8 +1,9 @@
 'use strict';
 
+const Methods = require('./lib/methods');
 module.exports = {
     plugin: require('./lib/plugin'),
-    sign: require('./lib/sign'),
-    verify: require('./lib/verify'),
-    decode: require('./lib/decode')
+    sign: Methods.sign,
+    verify: Methods.verify,
+    decode: Methods.decode
 };

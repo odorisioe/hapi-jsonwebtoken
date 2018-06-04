@@ -283,10 +283,11 @@ describe('hapi-jsonwebtoken', () => {
 
         const user = internals.users[3];
         const config = Hoek.clone(internals.config[1]);
-        const token = await HapiJWT.sign(user, config);
 
         const server = await internals.hapi();
         server.auth.strategy('jwt', 'hapi-jsonwebtoken', config);
+
+        const token = await server.methods.jwtSign(user);
 
         server.route({
             method: 'GET',
@@ -315,10 +316,11 @@ describe('hapi-jsonwebtoken', () => {
 
         const user = internals.users[4];
         const config = Hoek.clone(internals.config[1]);
-        const token = await HapiJWT.sign(user, config);
 
         const server = await internals.hapi();
         server.auth.strategy('jwt', 'hapi-jsonwebtoken', config);
+
+        const token = server.methods.jwtSign(user);
 
         server.route({
             method: 'GET',
@@ -348,10 +350,11 @@ describe('hapi-jsonwebtoken', () => {
         const user = internals.users[1];
         const config = Hoek.clone(internals.config[1]);
         config.sign.options.expiresIn = -10;
-        const token = await HapiJWT.sign(user, config);
 
         const server = await internals.hapi();
         server.auth.strategy('jwt', 'hapi-jsonwebtoken', config);
+
+        const token = server.methods.jwtSign(user);
 
         server.route({
             method: 'GET',
@@ -380,12 +383,13 @@ describe('hapi-jsonwebtoken', () => {
 
         const user = internals.users[3];
         const config = Hoek.clone(internals.config[3]);
-        const token = await HapiJWT.sign(user, config);
 
         const server = await internals.hapi({
             debug: false
         });
         server.auth.strategy('jwt', 'hapi-jsonwebtoken', config);
+
+        const token = server.methods.jwtSign(user);
 
         server.route({
             method: 'GET',
@@ -411,12 +415,11 @@ describe('hapi-jsonwebtoken', () => {
 
         const user = internals.users[3];
         const config = Hoek.clone(internals.config[4]);
-        const token = await HapiJWT.sign(user, config);
 
-        const server = await internals.hapi({
-            debug: false
-        });
+        const server = await internals.hapi({ debug: false });
         server.auth.strategy('jwt', 'hapi-jsonwebtoken', config);
+
+        const token = server.methods.jwtSign(user);
 
         server.route({
             method: 'GET',
@@ -442,10 +445,11 @@ describe('hapi-jsonwebtoken', () => {
 
         const user = internals.users[1];
         const config = Hoek.clone(internals.config[1]);
-        const token = await HapiJWT.sign(user, config);
 
         const server = await internals.hapi();
         server.auth.strategy('jwt', 'hapi-jsonwebtoken', config);
+
+        const token = server.methods.jwtSign(user);
 
         server.route({
             method: 'GET',
@@ -474,15 +478,18 @@ describe('hapi-jsonwebtoken', () => {
 
         const userOne = internals.users[1];
         const configOne = Hoek.clone(internals.config[1]);
-        const tokenOne = await HapiJWT.sign(userOne, configOne);
+        configOne.serverMethods.prefix = 'jwtOne';
 
         const userTwo = internals.users[2];
         const configTwo = Hoek.clone(internals.config[2]);
-        const tokenTwo = await HapiJWT.sign(userTwo, configTwo);
+        configTwo.serverMethods.prefix = 'jwtTwo';
 
         const server = await internals.hapi();
         server.auth.strategy('jwtOne', 'hapi-jsonwebtoken', configOne);
         server.auth.strategy('jwtTwo', 'hapi-jsonwebtoken', configTwo);
+
+        const tokenOne = server.methods.jwtOneSign(userOne);
+        const tokenTwo = server.methods.jwtTwoSign(userTwo);
 
         server.route({
             method: 'GET',
@@ -560,6 +567,40 @@ describe('hapi-jsonwebtoken', () => {
     });
 
 
+    it('Auth plugin - disable server methods', async () => {
+
+        const config = Hoek.clone(internals.config[1]);
+        config.serverMethods.enable = false;
+
+        const server = await internals.hapi();
+        server.auth.strategy('jwt', 'hapi-jsonwebtoken', config);
+
+        expect(server.methods.jwtSign).to.equal(undefined);
+        expect(server.methods.jwtDecode).to.equal(undefined);
+        expect(server.methods.jwtVerify).to.equal(undefined);
+    });
+
+
+    it('Auth plugin - server methods', async () => {
+
+        const user = internals.users[1];
+        const config = Hoek.clone(internals.config[1]);
+
+        const server = await internals.hapi();
+        server.auth.strategy('jwt', 'hapi-jsonwebtoken', config);
+
+        const token = server.methods.jwtSign(user);
+
+        const decoded = server.methods.jwtDecode(token, { decode: { complete: true } });
+
+        expect(decoded.payload.id).to.equal(user.id);
+        expect(decoded.payload.username).to.equal(user.username);
+
+        const verified = server.methods.jwtVerify(token);
+
+        expect(verified.id).to.equal(user.id);
+        expect(verified.username).to.equal(user.username);
+    });
 });
 
 
@@ -573,6 +614,7 @@ describe('hapi-jsonwebtoken', () => {
 internals.config = {
     1: {
         secretOrPrivateKey: '#Config01!',
+        serverMethods: {},
         sign: {
             promise: false,
             options: { // https://github.com/auth0/node-jsonwebtoken#jwtsignpayload-secretorprivatekey-options-callback
@@ -606,6 +648,7 @@ internals.config = {
     },
     2: {
         secretOrPrivateKey: '#Config02!',
+        serverMethods: {},
         validate: (request, payload, h) => {
 
             const user = internals.users[payload.id];

@@ -474,6 +474,46 @@ describe('hapi-jsonwebtoken', () => {
     });
 
 
+    it('Auth plugin (w/ promises) - authorized', async () => {
+
+        const user = internals.users[1];
+        const config = Hoek.clone(internals.config[1]);
+        config.sign.promise = true;
+        config.decode.promise = true;
+        config.verify.promise = true;
+
+        const server = await internals.hapi();
+        server.auth.strategy('jwt', 'hapi-jsonwebtoken', config);
+
+        const token = await server.methods.jwtSign(user)
+            .then((result) => {
+
+                return result;
+            });
+
+        server.route({
+            method: 'GET',
+            path: '/',
+            handler: function (request, h) {
+
+                return 'OK';
+            },
+            options: {
+                auth: {
+                    strategy: 'jwt',
+                    scope: ['admin']
+                }
+            }
+        });
+
+        const request = { method: 'GET', url: '/', headers: { authorization: 'Bearer ' + token } };
+        const res = await server.inject(request);
+
+        expect(res.result).to.equal('OK');
+        expect(res.statusCode).to.equal(200);
+    });
+
+
     it('Auth plugin - authorized (two strategies)', async () => {
 
         const userOne = internals.users[1];

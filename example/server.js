@@ -63,6 +63,7 @@ const main = async () => {
         method: 'GET',
         path: '/decodeToken',
         handler: (request, h) => {
+
             const token = request.headers.authorization;
             return request.server.methods.jwtDecode(token);
         },

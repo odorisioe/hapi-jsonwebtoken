@@ -2,9 +2,44 @@
 
 const Hapi = require('hapi');
 const HapiJWT = require('../');
-const HapiJWTConfig = require('./config/hapi-jsonwebtoken');
-const Users = require('./config/users');
 
+const Users = {
+    1: {
+        id: 1,
+        name: 'Test',
+        isActive: true
+    },
+    2: {
+        id: 2,
+        name: 'Check',
+        isActive: false
+    }
+};
+
+// const HapiJWTConfig = require('./config/jsonwebtoken');
+const HapiJWTConfig = {
+    secretOrPrivateKey: 's3cr3t',
+    sign: {},
+    decode: {},
+    verify: {},
+    getToken: (request) => {
+
+        return request.headers.authorization;
+    },
+    validate: (request, payload, h) => {
+
+        const user = Users[payload.id];
+
+        if (!user) {
+            return { credentials: null, isValid: false };
+        }
+
+        return {
+            isValid: user.isActive,
+            credentials: { id: user.id, name: user.name }
+        };
+    }
+};
 
 const main = async () => {
 
@@ -20,18 +55,6 @@ const main = async () => {
         handler: (request, h) => {
 
             return 'Auth OK';
-        }
-    });
-
-    server.route({
-        method: 'GET',
-        path: '/public',
-        handler: (request, h) => {
-
-            return 'Public';
-        },
-        options: {
-            auth: false
         }
     });
 
